@@ -2034,28 +2034,42 @@ int BattleBase::repeatNum(int player)
 void BattleBase::testCritical(int player, int target)
 {
     (void) target;
-
-    /* In RBY, Focus Energy reduces crit by 75%; in statium, it's * 4 */
-    int up (1), down(1);
-    if (tmove(player).critRaise & 1) {
-        up *= 8;
-    }
-    if (tmove(player).critRaise & 2) {
-        if (gen() == Gen::RedBlue || gen() == Gen::Yellow) {
-            down = 4;
-        } else {
-            up *= 4;
+   
+    int randnum = randint(256);
+    int baseSpeed = PokemonInfo::BaseStats(fpoke(player).id, gen()).baseSpeed();
+    /* Focus Energy */
+    if (gen() == Gen::RedBlue || gen() == Gen::Yellow) {
+        int criticalRatio = baseSpeed >> 1;
+        if (tmove(player).critRaise & 2) {
+            criticalRatio = criticalRatio >> 1;
+        }
+        else {
+            criticalRatio = criticalRatio << 1;
         }
     }
-    PokeFraction critChance(up, down);
-    int randnum = randint(512);
-    int baseSpeed = PokemonInfo::BaseStats(fpoke(player).id, gen()).baseSpeed();
-    bool critical = randnum < std::min(510, baseSpeed * critChance);
-
+    else {
+        int criticalRatio = (baseSpeed + 76) >> 2;
+        if (tmove(player).critRaise & 2) {
+            criticalRatio = (criticalRatio << 2) + 160;
+        }
+        else {
+            criticalRatio = criticalRatio << 1;
+        }
+    }
+    /* Karate Chop, Razor Leaf, Crabhammer, Slash */
+    if (tmove(player).critRaise & 1) {
+        criticalRatio = criticalRatio << 2;
+    }
+    else {
+        criticalRatio = criticalRatio >> 1;
+    }
+    /* Critical Hit check */
+    bool critical = randnum < std::min(255, criticalRatio);
     if (critical) {
         turnMem(player).add(TM::CriticalHit);
         notify(All, CriticalHit, player);
-    } else {
+    }
+    else {
         turnMem(player).remove(TM::CriticalHit);
     }
 }
